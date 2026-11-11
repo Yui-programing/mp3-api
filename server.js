@@ -5,15 +5,78 @@ const { ZingMp3 } = require('./dist');
 const app = express();
 const PORT = process.env.PORT || 5555;
 
+// 1. Header CORS đặt ở đầu để cho phép tất cả domain gọi vào
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  next();
+});
+
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// health
+// Health check
 app.get('/health', (_req, res) => {
   res.json({ ok: true });
 });
 
-// basic demos
+// ==================== TÌM KIẾM TÁCH BIỆT ====================
+
+// 1. Chỉ tìm BÀI HÁT
+app.get('/api/search/song', async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q) return res.status(400).json({ error: 'Missing q' });
+    const response = await ZingMp3.search(String(q));
+    const songs = response?.data?.songs || [];
+    res.json({
+      err: 0,
+      msg: 'Success',
+      data: {
+        total: songs.length,
+        songs: songs
+      }
+    });
+  } catch (e) {
+    res.status(e?.response?.status || 500).json({ error: e?.message || 'Internal Error' });
+  }
+});
+
+// 2. Chỉ tìm NGHỆ SĨ / CA SĨ
+app.get('/api/search/artist', async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q) return res.status(400).json({ error: 'Missing q' });
+    const response = await ZingMp3.search(String(q));
+    const artists = response?.data?.artists || [];
+    res.json({
+      err: 0,
+      msg: 'Success',
+      data: {
+        total: artists.length,
+        artists: artists
+      }
+    });
+  } catch (e) {
+    res.status(e?.response?.status || 500).json({ error: e?.message || 'Internal Error' });
+  }
+});
+
+// 3. Tìm kiếm tổng hợp (Multi Search cũ)
+app.get('/api/search', async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q) return res.status(400).json({ error: 'Missing q' });
+    const data = await ZingMp3.search(String(q));
+    res.json(data);
+  } catch (e) {
+    res.status(e?.response?.status || 500).json({ error: e?.message || 'Internal Error' });
+  }
+});
+
+// ==================== CÁC ROUTE KHÁC ====================
+
+// Top 100
 app.get('/api/top100', async (_req, res) => {
   try {
     const data = await ZingMp3.getTop100();
@@ -23,6 +86,7 @@ app.get('/api/top100', async (_req, res) => {
   }
 });
 
+// Trang chủ Home
 app.get('/api/home', async (_req, res) => {
   try {
     const data = await ZingMp3.getHome();
@@ -32,7 +96,7 @@ app.get('/api/home', async (_req, res) => {
   }
 });
 
-// full list according to README
+// Link streaming JSON
 app.get('/api/song', async (req, res) => {
   try {
     const { id } = req.query;
@@ -44,7 +108,7 @@ app.get('/api/song', async (req, res) => {
   }
 });
 
-// redirect to stream URL for simple playback (avoid CORS)
+// Redirect stream phát nhạc
 app.get('/api/song/stream', async (req, res) => {
   try {
     const { id, quality = '128' } = req.query;
@@ -60,6 +124,7 @@ app.get('/api/song/stream', async (req, res) => {
   }
 });
 
+// Chi tiết Playlist
 app.get('/api/detail-playlist', async (req, res) => {
   try {
     const { id } = req.query;
@@ -71,6 +136,7 @@ app.get('/api/detail-playlist', async (req, res) => {
   }
 });
 
+// Chart Home
 app.get('/api/chart-home', async (_req, res) => {
   try {
     const data = await ZingMp3.getChartHome();
@@ -80,6 +146,7 @@ app.get('/api/chart-home', async (_req, res) => {
   }
 });
 
+// New Release Chart
 app.get('/api/newrelease-chart', async (_req, res) => {
   try {
     const data = await ZingMp3.getNewReleaseChart();
@@ -89,6 +156,7 @@ app.get('/api/newrelease-chart', async (_req, res) => {
   }
 });
 
+// Thông tin bài hát (nhạc sĩ, ca sĩ, album)
 app.get('/api/info-song', async (req, res) => {
   try {
     const { id } = req.query;
@@ -100,6 +168,7 @@ app.get('/api/info-song', async (req, res) => {
   }
 });
 
+// Chi tiết Nghệ sĩ theo alias
 app.get('/api/artist', async (req, res) => {
   try {
     const { name } = req.query;
@@ -111,6 +180,7 @@ app.get('/api/artist', async (req, res) => {
   }
 });
 
+// Danh sách bài hát của Nghệ sĩ phân trang
 app.get('/api/artist-songs', async (req, res) => {
   try {
     const { id, page = '1', count = '15' } = req.query;
@@ -122,6 +192,7 @@ app.get('/api/artist-songs', async (req, res) => {
   }
 });
 
+// Lời bài hát
 app.get('/api/lyric', async (req, res) => {
   try {
     const { id } = req.query;
@@ -133,17 +204,7 @@ app.get('/api/lyric', async (req, res) => {
   }
 });
 
-app.get('/api/search', async (req, res) => {
-  try {
-    const { q } = req.query;
-    if (!q) return res.status(400).json({ error: 'Missing q' });
-    const data = await ZingMp3.search(String(q));
-    res.json(data);
-  } catch (e) {
-    res.status(e?.response?.status || 500).json({ error: e?.message || 'Internal Error' });
-  }
-});
-
+// Danh sách MV theo thể loại
 app.get('/api/list-mv', async (req, res) => {
   try {
     const { id, page = '1', count = '15' } = req.query;
@@ -155,6 +216,7 @@ app.get('/api/list-mv', async (req, res) => {
   }
 });
 
+// Thể loại MV
 app.get('/api/category-mv', async (req, res) => {
   try {
     const { id } = req.query;
@@ -166,6 +228,7 @@ app.get('/api/category-mv', async (req, res) => {
   }
 });
 
+// Video MV
 app.get('/api/video', async (req, res) => {
   try {
     const { id } = req.query;
@@ -175,14 +238,6 @@ app.get('/api/video', async (req, res) => {
   } catch (e) {
     res.status(e?.response?.status || 500).json({ error: e?.message || 'Internal Error' });
   }
-});
-
-
-// Thêm header CORS cho tất cả request
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-  next();
 });
 
 app.listen(PORT, () => {
