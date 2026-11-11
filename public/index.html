@@ -147,7 +147,7 @@
     <pre id="out">(chưa có dữ liệu)</pre>
   </div>
 
-  <script>
+    <script>
     const out = document.getElementById('out');
     const setOut = (d) => out.textContent = typeof d === 'string' ? d : JSON.stringify(d, null, 2);
     function pickSongFields(s) {
@@ -171,18 +171,61 @@
       return res.json();
     }
 
-    // basic: đã ẩn UI, bỏ handler
+    // 1. Basic Buttons
+    document.getElementById('btnTop100').onclick = async () => {
+      try { setOut(await call('/api/top100')); } catch (e) { setOut(String(e)); }
+    };
+    document.getElementById('btnHome').onclick = async () => {
+      try { setOut(await call('/api/home')); } catch (e) { setOut(String(e)); }
+    };
+    document.getElementById('btnChartHome').onclick = async () => {
+      try { setOut(await call('/api/chart-home')); } catch (e) { setOut(String(e)); }
+    };
+    document.getElementById('btnNewRelease').onclick = async () => {
+      try { setOut(await call('/api/newrelease-chart')); } catch (e) { setOut(String(e)); }
+    };
 
-    // song: chỉ giữ input Song ID (không còn nút API)
+    // 2. Playlist Button
+    document.getElementById('btnDetailPlaylist').onclick = async () => {
+      const id = document.getElementById('playlistId').value.trim();
+      if (!id) return setOut('Vui lòng nhập Playlist ID');
+      try { setOut(await call('/api/detail-playlist', { id })); } catch (e) { setOut(String(e)); }
+    };
 
-    // playlist: đã ẩn UI, bỏ handler
+    // 3. Artist Buttons
+    document.getElementById('btnArtist').onclick = async () => {
+      const name = document.getElementById('artistAlias').value.trim();
+      if (!name) return setOut('Vui lòng nhập Artist alias');
+      try { setOut(await call('/api/artist', { name })); } catch (e) { setOut(String(e)); }
+    };
+    document.getElementById('btnArtistSongs').onclick = async () => {
+      const id = document.getElementById('artistId').value.trim();
+      const page = document.getElementById('artistPage').value.trim() || '1';
+      const count = document.getElementById('artistCount').value.trim() || '15';
+      if (!id) return setOut('Vui lòng nhập Artist ID');
+      try { setOut(await call('/api/artist-songs', { id, page, count })); } catch (e) { setOut(String(e)); }
+    };
 
-    // artist: đã ẩn UI, bỏ handler
+    // 4. MV Buttons
+    document.getElementById('btnListMV').onclick = async () => {
+      const id = document.getElementById('mvCatId').value.trim();
+      const page = document.getElementById('mvPage').value.trim() || '1';
+      const count = document.getElementById('mvCount').value.trim() || '15';
+      if (!id) return setOut('Vui lòng nhập Category ID (genre)');
+      try { setOut(await call('/api/list-mv', { id, page, count })); } catch (e) { setOut(String(e)); }
+    };
+    document.getElementById('btnCategoryMV').onclick = async () => {
+      const id = document.getElementById('mvCatId').value.trim();
+      if (!id) return setOut('Vui lòng nhập Category ID (genre)');
+      try { setOut(await call('/api/category-mv', { id })); } catch (e) { setOut(String(e)); }
+    };
+    document.getElementById('btnVideo').onclick = async () => {
+      const id = document.getElementById('videoId').value.trim();
+      if (!id) return setOut('Vui lòng nhập Video ID');
+      try { setOut(await call('/api/video', { id })); } catch (e) { setOut(String(e)); }
+    };
 
-
-    // mv: đã ẩn UI, bỏ handler
-
-    // Tìm kiếm theo từ khóa
+    // 5. Search Button
     document.getElementById('btnSearchV2').onclick = async () => {
       const q = document.getElementById('kw').value.trim();
       if (!q) return setOut('Vui lòng nhập từ khóa');
@@ -190,18 +233,15 @@
         const res = await call('/api/search', { q });
         const songs = Array.isArray(res?.data?.songs) ? res.data.songs : [];
         const concise = songs.map(pickSongFields);
-        // auto điền Song ID bài đầu vào playback nếu có
         if (concise[0]?.encodeId) {
           const inp = document.getElementById('songId');
           if (inp) inp.value = concise[0].encodeId;
         }
         setOut({ total: concise.length, songs: concise });
-      } catch (e) {
-        setOut(String(e));
-      }
+      } catch (e) { setOut(String(e)); }
     };
 
-    // Hành động theo Song ID
+    // 6. Song ID Actions
     const player = document.getElementById('player');
     const direct128 = document.getElementById('direct128');
     const note128 = document.getElementById('note128');
@@ -221,10 +261,7 @@
     document.getElementById('btnGetLink').onclick = async () => {
       const id = document.getElementById('songId').value.trim();
       if (!id) return setOut('Vui lòng nhập Song ID');
-      try {
-        const res = await call('/api/song', { id });
-        setOut(res);
-      } catch (e) { setOut(String(e)); }
+      try { setOut(await call('/api/song', { id })); } catch (e) { setOut(String(e)); }
     };
 
     document.getElementById('btnInfoSong').onclick = async () => {
@@ -243,20 +280,14 @@
           try {
             const resp = await fetch(fileUrl);
             const lrc = await resp.text();
-            // Chuyển LRC -> text đơn giản (bỏ timestamp) và hiển thị xuống dòng
             const text = lrc
               .split('\n')
               .map(line => line.replace(/\s*\[[^\]]*\]\s*/g, '').trim())
               .filter(Boolean)
               .join('\n');
             setOut(`"file": "${fileUrl}"\n\n${text}`);
-          } catch (err) {
-            // Nếu fetch thất bại, trả JSON gốc
-            setOut(res);
-          }
-        } else {
-          setOut(res);
-        }
+          } catch (err) { setOut(res); }
+        } else { setOut(res); }
       } catch (e) { setOut(String(e)); }
     };
   </script>
